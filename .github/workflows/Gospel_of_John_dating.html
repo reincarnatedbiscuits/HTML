@@ -1,0 +1,695 @@
+
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Test</title>
+	<style>
+.container {
+  width: 100%;
+  height: 500px;
+  margin: auto;
+  padding: 9px;
+}
+
+.graph_container {
+  width: 86%;
+  height: 200px;
+  float: left;
+}
+
+.two {
+  margin-left: 86%;
+  width: 14%;
+  height: 1100px;
+}
+
+table {
+  border-spacing: 0;
+  width: 100%;
+  border: 1px solid #ddd;
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+}
+
+select, button, p, ul {
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+}
+
+th, td {
+  text-align: left;
+  padding: 16px;
+  border: 1px solid #000;
+}
+
+tr:nth-child(even) {
+  background-color: #f2f2f2
+}
+.wrapper{
+  width:70%;
+}
+@media(max-width:992px){
+ .wrapper{
+  width:100%;
+} 
+}
+</style>
+<style id="compiled-css" type="text/css">
+.panel-heading.collapsed .fa-chevron-down,
+.panel-heading .fa-chevron-right {
+  display: none;
+}
+
+.panel-heading.collapsed .fa-chevron-right,
+.panel-heading .fa-chevron-down {
+  display: inline-block;
+}
+
+i.fa {
+  cursor: pointer;
+  margin-right: 5px;
+}
+
+.collapsed ~ .panel-body {
+  padding: 0;
+}
+.panel {
+  width: 100%;
+  height: 100px;
+  margin: auto;
+  padding: 10px;
+}
+</style>
+<script src="sorttable.js"></script>
+</head>
+
+<body>
+<section class="container">
+<div style="width: 86%" class="graph_container">
+<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.min.js"></script>
+-->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.js"></script>
+<canvas id="myChart" height="325" width="560"></canvas>
+<div id='tab1'></div>
+<table id="table_of_references" class="sortable">
+</table>
+</div>
+<div class="two">
+<ul id="mybar-legend">
+<p><b>Legend</b></p>
+
+</ul>
+</div>
+<div id="sorter" class="two">
+<button onclick="copytoclipboard()">Copy references to clipboard</button>
+<P>Sort by:</P>
+	<select onchange="resortdata()" id="referencesorter" >
+		<option value='Default'>Default</option>
+		<option value='ByAuthorsAsc'>By Author, Alphabetical order</option>
+		<option value='ByAuthorsDesc'>By Author, Reverse Alphabetical order</option>
+		<option value='ByReferenceAsc'>By Reference, Alphabetical order</option>
+		<option value='ByReferenceDesc'>By Reference, Reverse Alphabetical order</option>
+		<option value='ByEarlyDateAsc'>By Early Date, Ascending</option>
+		<option value='ByEarlyDateDesc'>By Early Date, Descending</option>
+		<option value='ByLateDateAsc'>By Late Date, Ascending</option>
+		<option value='ByLateDateDesc'>By Late Date, Descending</option>
+		<option value='ByRefDateAsc'>By Reference Date, Ascending</option>
+		<option value='ByRefDateDesc'>By Reference Date, Descending</option>
+		<option value='ByTraditionAsc'>By Tradition, Alphabetical order</option>
+		<option value='ByTraditionDesc'>By Tradition, Reverse Alphabetical order</option>
+	</select>
+	<!--
+	<textarea id="debughere">
+	</textarea>
+	-->
+	
+</div>
+  <script>
+// what we'll do is set up a 2-dimensional array and then resort it for data
+// for 2D array:
+//   Author
+//   Reference or citation
+//   Early Date
+//   Late Date
+//   Tradition  
+// 
+var ctx = document.getElementById("myChart").getContext("2d");
+var myBar;
+var win = window, 
+    doc=document, 
+	docElem = doc.documentElement,
+    body = doc.getElementsByTagName('body')[0],
+    wid = win.innerWidth || docElem.clientWidth || body.clientWidth,
+    hei = win.innerHeight|| docElem.clientHeight|| body.clientHeight;
+	// alert(wid + "x" + hei);
+var numSources = 35;
+var origin = 0;
+var LegendTradition = ['Jewish', 'Catholic', 'Atheist', 'Agnostic', 'Orthodox', 'Fundamentalist Protestant', 'Evangelical Protestant', 'Protestant', 'Anglican', 'Church of Scotland', 'Liberal Protestant', 'Liberal German'];
+var LegendColorMapping = ['#FFCC00', '#20FF40', '#000000', '#654321', '#FF6600', '#4682B4', '#02075D', '#87CEEB', '#7FFFD4', '#0065BF', '#FF6347', '#FF0000'];
+var RgbaColorMapping = ['rgba(255, 204, 0, 1.0)', 'rgba(32, 255, 64, 1.0)', 'rgba(0, 0, 0, 1.0)', 'rgba(101, 67, 33, 1.0)', 'rgba(255, 102, 0, 1.0)', 'rgba(70, 130, 180, 1.0)', 'rgba(2, 7, 93, 1.0)', 'rgba(135, 206, 235, 1.0)', 'rgba(127, 255, 212, 1.0)', 'rgba(0, 101, 191, 1.0)', 'rgba(255, 99, 71, 1.0)', 'rgba(255, 0, 0, 1.0)'];
+var gradient = ctx.createLinearGradient(500,0,350,0); // Dimensions of the color rectangle
+gradient.addColorStop(0, 'rgba(255, 255, 255, 0.0)');
+gradient.addColorStop(1.0, 'rgba(70, 130, 180, 1.0)');
+var pregradient = ctx.createLinearGradient((0.2 * ((0.86*wid)-200))+200,0,(0.28 * ((0.86*wid)-200))+200,0);
+pregradient.addColorStop(0, 'rgba(255, 255, 255, 0.0)');
+pregradient.addColorStop(1.0, 'rgba(70, 130, 180, 1.0)');
+var pregradientev = ctx.createLinearGradient((0.2 * ((0.86*wid)-200))+200,0,(0.3 * ((0.86*wid)-200))+200,0);
+pregradientev.addColorStop(0, 'rgba(255, 255, 255, 0.0)');
+pregradientev.addColorStop(1.0, 'rgba(2, 7, 93, 1.0)');
+
+	var origData = [];
+	var secData = [];
+	var authors = [];
+	var author_reference = [];
+	var backgroundcolorarray = [];
+	var allsources = new Array(numSources);
+	var originalarray = new Array(numSources);
+	for (var i = 0; i < allsources.length; i++) {
+		allsources[i] = [];	
+	}
+	allsources[0] = ['Bultmann, Rudolph', 'The Gospel of John: A Commentary (Philadelphia: Westminster John Knox Press, 1971), 12', 100, 100, 'Liberal German', 1891, '2 - Medium/Low'];
+	allsources[1] = ['Nolloth, C. F.', 'The Rise of the Christian Religion: A Study in Origins (London: Macmillan and Co, Ltd, 1917): 27', 95, 95, 'Anglican', 1917, '2 - Medium/Low'];
+	allsources[2] = ['Robinson, John A. T.', 'Redating the New Testament (Philadelphia: Westminster, 1976), pps. 275, 316-318;\nThe Priority of John, ed. J. F. Coakley (Oak Park, IL: Meyer-Stone, 1987), 67-68, 91', 50, 70, 'Anglican', 1976, '5 - High'];
+	allsources[3] = ['Wallace, J. Warner', 'Cold Case Christianity at https://coldcasechristianity.com/writings/johns-gospel-may-have-been-last-but-it-wasnt-late/', 64, 70, 'Evangelical Protestant', 2017, '3 - Medium'];
+	allsources[4] = ['Baur, F. C.', 'Kritische Untersuchungen über die kanonischen Evangelien, ihr Verhältnis zueinander, ihren Character und Ursprung (Tübingen: Verlag und Druck, 1847), 239', 160, 170, 'Liberal German', 1847, '1 - Low'];
+	allsources[5] = ['Bauer, Bruno', 'Critique of the Gospel of John (1840)', 160, 170, 'Liberal German', 1840, '1 - Low'];
+	allsources[6] = ['Malick, David', 'https://bible.org/article/introduction-gospel-john', 80, 98, 'Protestant', 2013, '3 - Medium'];
+	allsources[7] = ['Brown, Raymond E.', 'The Community of the Beloved Disciple: The Life, Loves, and Hates of an Individual Church in the New Testament (New York: Paulist Press, 1979), 97', 90, 100, 'Catholic', 1979, '3 - Medium'];
+//	allsources[8] = ['Torrey, Charles C. ', 'Our Translated Gospels: Some of the Evidence (New York: Harper and Brothers, 1936), x-xi.', 50, 300, 'Fundamentalist Protestant'];
+	allsources[8] = ['Torrey, Charles C.', 'Our Translated Gospels: Some of the Evidence (New York: Harper and Brothers, 1936), x-xi.', -10, 50, 'Fundamentalist Protestant', 1936, '2 - Medium/Low'];
+	allsources[9] = ['Cribbs, F. Lamar', 'Reassessment of the date of origin and the destination of the Gospel of John in Journal of Biblical Literature 89 (1970): 38-55', 57, 72, 'Evangelical Protestant', 1970, '4 - Medium High'];
+	allsources[10] = ['Morris, Leon', 'The Gospel According to John, rev. ed. (Grand Rapids, MI: Eerdmans, 1995), 34-35\nStudies in the Fourth Gospel, 283-92', 65, 70, 'Anglican', 1995, '3 - Medium'];
+	allsources[11] = ['Carson, D. A.', 'The Gospel According to John (Downers Grove, IL/Leicester, UK: InterVarsity Press, 1991), pps. 75, 82, 85*, 184', 80, 85, 'Evangelical Protestant', 1991, '5 - High'];
+	allsources[12] = ['Godet, F.', 'Commentary on the Gospel of John with an Historical and Critical Introduction, 3d ed., vol. 1, trans. Timothy Dwight (New York: Funk & Wagnalls, 1890), 167', 80, 90,  'Protestant', 1890, '2 - Medium Low'];
+	allsources[13] = ['Ehrman, Bart', 'Jesus, Interrupted (New York: HarperCollins, 2009) 144-145', 90, 95, 'Agnostic', 2009, '2 - Medium/Low'];
+	allsources[14] = ['Moffatt, James', 'An Introduction to the Literature of the New Testament (New York: Scribners, 1911), 522', 95, 115, 'Church of Scotland', 1911, '2 - Medium/Low'];
+	allsources[15] = ['Witherington III, Benjamin', 'John\'s Wisdom: A Commentary on the Fourth Gospel (Louisville, KY: Westminster, 1995), 29.', 90, 100, 'Evangelical Protestant', 1995, '3 - Medium'];
+	allsources[16] = ['Barrett, Charles K.', 'The Gospel According to St. John, 2d ed. (Philadelphia: Westminster, 1978), 104, 127-128, 200.', 90, 140, 'Protestant', 1978, '4 - Medium High'];
+	allsources[17] = ['Hendriksen, William', 'New Testament Commentary: Exposition of the Gospel According to John (Grand Rapids, MI: Baker, 1953-1954), 6-7', 80, 100, 'Protestant', 1953, '3 - Medium'];
+	allsources[18] = ['Jülicher, Adolf', 'An Introduction to the New Testament, trans. Janet Penrose Ward (London: Smith, Elder, & Co., 1904), 400-401.', 100, 110, 'Liberal German', 1904, '2 - Medium/Low'];
+	allsources[19] = ['Holtzmann, Heinrich J.', 'Evangelium, Briefe und Offenbarung des Johannes (Johannine books) (Tübingen: Mohr, 1891)', 100, 125, 'Liberal German', 1891, '2 - Medium/Low'];
+	allsources[20] = ['MacArthur, John', 'John (MacArthur Commentary Series; Chicago: Moody, 2006) and https://www.gty.org/library/bible-introductions/MSB43/john', 80, 90, 'Fundamentalist Protestant', 2010, '3 - Medium'];
+	allsources[21] = ['Keener, Craig S.', 'The Gospel of John (2 Volumes) (Grand Rapids, MI: Baker Academic, 2003', 90, 100, 'Evangelical Protestant', 2003, '4 - Medium High'];
+	allsources[22] = ['Westcott, B. F.', 'The Gospel according to John: The Authorised Version with Introduction and Notes (London: John Murray, 1894), p. xl', 90, 100, 'Anglican', 1894, '2 - Medium/Low'];
+	allsources[23] = ['Martin, Ralph P.', 'New Testament Foundations: A Guide for Christian Students, vol. 1 (Grand Rapids: Eerdmans, 1975), 276-82;\nMartin and Carl N. Toney: New Testament Foundations: An Introduction for Students (Eugene, OR: Wipf and Stock, 2018): 306', 85, 100, 'Evangelical Protestant', 2018, '3 - Medium'];
+	allsources[24] = ['Osborne, G. with Comfort, P. and Hawley, W.', 'The Gospel of John, 1-3 John (Cornerstone Biblical Commentary) (Carol Stream, IL: Tyndale: 2007), p. 6', 66, 120, 'Evangelical Protestant', 2007, '4 - Medium High'];
+	allsources[25] = ['Blomberg, Craig', 'The Historical Reliability of John\'s Gospel (Downers Grove, IL: IVP Academic, 2001; paperback, 2011), p. 44', 87, 100, 'Evangelical Protestant', 2001, '4 - Medium High'];
+	allsources[26] = ['Edwards, Ruth B.', 'Discovering John (London: SPCK, 2003, 2014), p. 57', 75, 95, 'Protestant', 2003, '3 - Medium'];
+	allsources[27] = ['Carson, D. A. and Moo, D. J.', 'Introduction to the New Testament (2d ed.; Grand Rapids: Zondervan, 2005), pps. 244-266\nAlso  D. A. Carson, The Gospel According to John, Pillar New Testament Commentary (Grand Rapids: Eerdmans, 1991), 85 -- listing 80-90', 80, 85, 'Evangelical Protestant', 2005, '4 - Medium High'];
+	allsources[28] = ['van der Watt, Jan', 'An Introduction to the Johannine Gospel and Letters (London: T & T Clark, 2007), 123', 70, 125, 'Liberal Protestant', 2007, '2 - Medium/Low'];
+	allsources[29] = ['Wallace, Daniel B.', 'https://bible.org/article/john-52-one-more-time-response-andreas-k%C3%B6stenberger\nalso Greek Grammar Beyond the Basics (Grand Rapids: Zondervan, 1996), 531', -2, 70, 'Evangelical Protestant', 2007, '5 - High'];
+	allsources[30] = ['Köstenberger, Andreas J.', 'John (Baker Exegetical Commentary on the New Testament) (Grand Rapids, MI: Baker Academic, 2004), 6-8\nAlso Encountering John: The Gospel in Historical, Literary, and Theological Perspective (Grand Rapids, MI: Baker, 1999), 26', 80, 85, 'Evangelical Protestant', 2004, '4 - Medium High'];
+	allsources[31] = ['Charlesworth, James H.', 'Jesus as Mirrored in John: The Genius in the New Testament (London: T & T Clark, 2019), 81', 90, 100, 'Liberal Protestant', 2019, '3 - Medium'];
+	allsources[32] = ['Bock, Darrell L.', 'Studying the Historical Jesus: A Guide to Sources and Methods (Grand Rapids: Baker Academic, 2002), 36', 80, 99, 'Evangelical Protestant', 2002, '3 - Medium'];
+	allsources[33] = ['Porter, Stanley E. and Ong, Hughson T., editors','The Origins of John\'s Gospel (Leiden: Brill, 2016)',80,100,'Evangelical Protestant',2016,'5 - High'];
+	allsources[34] = ['Kysar, Robert', 'Voyages with John: Charting the Fourth Gospel (Waco: Baylor, 2005), 104; also, The Gospel of John in the Anchor Bible Dictionary vol. 3 (New Haven: Yale, 1992): 919', 90, 100, 'Protestant', 2005, '3 - Medium'];
+	
+	originalarray = allsources.concat();
+	
+	for (var i=0; i < numSources; i++) {
+		origData.push(Number(allsources[i][2]));
+		secData.push(Number(allsources[i][3]) - Number(allsources[i][2]));
+		authors.push(allsources[i][0]);
+		author_reference.push(allsources[i][0] + '.\n' + allsources[i][1]);
+		if (Number(allsources[i][2]) < 20) {
+			if (allsources[i][4] === 'Fundamentalist Protestant') {
+				backgroundcolorarray.push(pregradient);
+				}
+			else if (allsources[i][4] === 'Evangelical Protestant') {
+				backgroundcolorarray.push(pregradientev);
+				}
+		}
+		else {
+			for (var j=0; j < LegendTradition.length; j++) {
+				if (allsources[i][4] === LegendTradition[j]) {
+					backgroundcolorarray.push(RgbaColorMapping[j]);
+				}
+			}
+		}
+	}
+
+var chartData = {
+  labels: authors,
+  datasets: [{
+    label: 'early date (A.D./C.E.)',
+	backgroundColor: 'rgba(255, 255, 255, 0)',
+    borderColor: 'rgba(255, 255, 255, 0)',
+    data: origData.map(function(value) { return value-origin; }),
+  },
+  {
+    label: 'late date  (A.D./C.E.)',
+	backgroundColor: backgroundcolorarray,
+	borderSkipped: [false, false, 'right', 'left', false, false],
+    borderColor: 'rgba(255, 255, 255, 1.0)',
+    data: secData.map(function(value) { return value-origin; }),
+  },
+  {
+	label: 'date of composition (A.D./C.E.)',
+	backgroundColor: ['rgba(255, 0, 0, 0.6)', 'rgba(127, 255, 212, 1.0)'],
+	data: [
+		{x: 100, y: 0},
+		{x: 95, y: 1}
+   ],
+	type: 'scatter'
+  }
+  // sort of what we want. but if we use scatter, we have to suppress trying to add to the first label (or put all the singular points first)
+  
+  ]
+};
+
+init();
+
+function init() {
+// var ctx = document.getElementById("myChart").getContext("2d");
+myBar = new Chart(ctx, {
+  type: 'horizontalBar',
+  data: chartData,
+  options: {
+    tooltips: {
+  		callbacks: {
+			title: function(tooltipItem, data) {
+				var titlestring = author_reference[tooltipItem[0].index];
+				var splittext;
+				var arguments;
+				if (/\n/.test(titlestring)) {
+					splittext = titlestring.split(/\n/);
+					arguments = 1;
+				}
+				else {
+					splittext=titlestring;
+					arguments = 0;
+				}
+				if (arguments === 0) {
+					var title1 = [splittext];
+					return title1;
+					}
+				else {
+					var title1 = [];
+					for (var i = 0; i < splittext.length; i++) {
+						title1.push(splittext[i]);
+						}
+				}
+				return title1; }
+			,
+  			label: function(tooltipItem, data) {
+				var label1 = data.datasets[tooltipItem.datasetIndex].label;
+				var datingyear = tooltipItem.xLabel;
+				var tooltip;
+				if ((secData[tooltipItem.index] === 0) && (tooltipItem.datasetIndex < 2))
+				{
+					// really garbage in here to suppress
+					if (label1 === "early date (A.D./C.E.)" ) {
+						label1 = 'date of composition (A.D./C.E.)';
+						// was :tooltip = [label1 + ": " + datingyear];
+						datingyear = tooltipItem.datasetIndex;
+					}
+				}
+				else if (datingyear < 0)
+				{
+				// do nothing
+				}
+				else if (datingyear > 200)
+				{
+				// do nothing
+				}
+				else
+				{
+					if (label1 === "early date (A.D./C.E.)" ) {
+						datingyear = tooltipItem.xLabel;
+					}
+					else 
+					{
+						// not early date, so late date.
+						datingyear = Number(origData[tooltipItem.index]) + Number(secData[tooltipItem.index]);
+					}
+				tooltip = [label1 + ": " + datingyear];
+				}
+  				return tooltip; }
+  		}
+  	},
+	// this currently doesn't work. Too bad.
+	legendTemplate: '<ul class="mybar-legend"><li>stuff</li></ul>',
+	legendCallback: function(myBar) { 
+		var text = []; 
+		text.push('<ul class="' + myBar.id + '-legend">'); 
+		for (var i = 0; i < LegendTradition.length; i++) { 
+			text.push('<li><span style="background-color:' + 
+					   LegendColorMapping[i] + 
+					   '"></span>'); 
+			
+			text.push(LegendTradition[i]); 
+			 
+			text.push('</li>'); 
+		} 
+		text.push('</ul>'); 
+		return text.join(''); 
+	},
+	legend: {
+      display: false,
+	  position: 'right'
+    },
+	title: {
+	 display: true,
+	 text: 'Using Chart.js to do timelines: The Gospel of John'
+	},
+    scales: {
+      yAxes: [{
+	    stacked: true,
+      	color: 'red',
+        type: 'category',
+      }],
+      xAxes: [{
+		id: 'bottom-x-axis',
+		scaleLabel: {
+			display: true,
+			labelString: "Year (A.D.)"
+			},
+	    stacked: true,
+        gridLines:{
+          color: "black",
+          borderDash: [5, 10],
+          zeroLineColor:"red"
+        },
+        ticks: {
+        	min: 0,
+          max: 200,
+          callback: function(value, index, values) {
+            return value+origin;
+          }
+        },
+		position: 'bottom'
+      },
+	  {
+		id: 'top-x-axis',
+		labels: [0, 20, 40, 60, 80, 100, 120, 140, 160, 180, 200],
+		scaleLabel: {
+			display: true,
+			labelString: "Year (A.D.)"
+			},
+	    stacked: true,
+        gridLines:{
+          color: "black",
+          borderDash: [5, 10],
+          zeroLineColor:"red"
+        },
+        ticks: {
+        	min: 0,
+          max: 200,
+          callback: function(value, index, values) {
+            return value+origin;
+          }
+        },
+		position: 'top'
+      }
+	  ],
+    }
+  },
+  plugins: [{
+   beforeInit: function(chart) {
+      chart.data.labels.forEach(function(e, i, a) {
+         if (/\n/.test(e)) {
+            a[i] = e.split(/\n/);
+         }
+      });
+   }
+  }]
+});
+
+// overrides in this area: e.g., color gradient
+// myBar.data.datasets[0].bars[1].backgroundColor = "green";
+}
+
+var LegendTextColor = [];
+var text = []; 
+for (var i = 0; i < LegendTradition.length; i++) { 
+	text.push('<div width="100px" style="line-height: 1.5; color:white; background-color:' + 
+    LegendColorMapping[i] + 
+	'">' + LegendTradition[i] + '</div>'); 
+	document.getElementById('mybar-legend').innerHTML += text[i];
+	} 
+
+var tablecalc;
+var earlydate;
+	tablecalc = "<table id=\"table_of_references\" class=\"sortable\"><tr><th>Author</th><th>Reference(s)</th><th>Early Date</th><th>Late Date</th><th>Year of Latest Publication</th><th>Quality of Work</th><th>Tradition</th></tr>";
+	for (var i=0; i < numSources; i++) {
+		earlydate = Number(allsources[i][2]);
+		if (earlydate < 0) {
+			earlydate = "";
+		}
+		tablecalc += "<tr><td>" + allsources[i][0] + "</td><td>" + allsources[i][1] + "</td><td>" + earlydate + "</td><td>" + allsources[i][3] + "</td><td>" + allsources[i][5] + "</td><td>" + allsources[i][6] + "</td><td> " + allsources[i][4] + "</td></tr>";
+	}
+	tablecalc += "</table>";
+	document.getElementById('tab1').innerHTML = tablecalc;
+
+function resortdata() {
+	var newAuthors = [];
+	var newEarly = [];
+	var newLate = [];
+	var newbackgroundcolorarray = [];
+	var newauthorreference= [];
+	var val = document.getElementById("referencesorter").value;
+	var sortedArray = new Array(numSources);
+	var realignedArray = new Array(numSources);
+	if (val === 'ByAuthorsAsc') {
+		sortedArray = allsources.sort(function(a,b) { 
+			var comparestring1 = a[0].toUpperCase();
+			var comparestring2 = b[0].toUpperCase();
+			return comparestring1.localeCompare(comparestring2);
+		});
+		// document.getElementById('tab1').innerHTML=sortedArray;
+		}
+	else if (val === 'ByAuthorsDesc') {
+		sortedArray = allsources.sort(function(a,b) { 
+			var comparestring1 = a[0].toUpperCase();
+			var comparestring2 = b[0].toUpperCase();
+			return comparestring2.localeCompare(comparestring1);
+		});
+		}
+	else if (val === 'ByReferenceAsc') {
+		sortedArray = allsources.sort(function(a,b) { 
+			var comparestring1 = a[1].toUpperCase();
+			var comparestring2 = b[1].toUpperCase();
+			return comparestring1.localeCompare(comparestring2);
+		});
+		}
+	else if (val === 'ByReferenceDesc') {
+		sortedArray = allsources.sort(function(a,b) { 
+			var comparestring1 = a[1].toUpperCase();
+			var comparestring2 = b[1].toUpperCase();
+			return comparestring2.localeCompare(comparestring1);
+		});
+		}
+	else if (val === 'ByEarlyDateAsc') {
+			sortedArray = allsources.sort(function(a,b) { return a[2]-b[2] });
+		}
+	else if (val === 'ByEarlyDateDesc') {
+			sortedArray = allsources.sort(function(a,b) { return b[2]-a[2] });
+		}
+	else if (val === 'ByLateDateAsc') {
+			sortedArray = allsources.sort(function(a,b) { return a[3]-b[3] });
+		}
+	else if (val === 'ByLateDateDesc') {
+			sortedArray = allsources.sort(function(a,b) { return b[3]-a[3] });
+		}
+	else if (val === 'ByRefDateAsc') {
+			sortedArray = allsources.sort(function(a,b) { return a[5]-b[5] });
+		}
+	else if (val === 'ByRefDateDesc') {
+			sortedArray = allsources.sort(function(a,b) { return b[5]-a[5] });
+		}
+	else if (val === 'ByTraditionAsc') {
+		sortedArray = allsources.sort(function(a,b) { 
+			var comparestring1 = a[4].toUpperCase();
+			var comparestring2 = b[4].toUpperCase();
+			return comparestring1.localeCompare(comparestring2);
+		});
+		// document.getElementById('tab1').innerHTML=sortedArray;
+		}
+	else if (val === 'ByTraditionDesc') {
+		sortedArray = allsources.sort(function(a,b) { 
+			var comparestring1 = a[4].toUpperCase();
+			var comparestring2 = b[4].toUpperCase();
+			return comparestring2.localeCompare(comparestring1);
+		});
+		}
+	else {
+	// default
+		sortedArray = originalarray.concat();
+		// document.getElementById('debughere').innerHTML = sortedArray;
+	}
+			
+		// put array into reference table
+		tablecalc = "<table id=\"table_of_references\" class=\"sortable\"><tr><th>Author</th><th>Reference(s)</th><th>Early Date</th><th>Late Date</th><th>Year of Latest Publication</th><th>Quality of Work</th><th>Tradition</th></tr>";
+		for (var j=0; j < numSources; j++) {
+			// document.getElementById('tab1').innerHTML = sortedArray;
+			earlydate = Number(sortedArray[j][2]);
+			if (earlydate < 0) {
+				earlydate = "";
+			}
+			tablecalc += "<tr><td>" + sortedArray[j][0] + "</td><td>" + sortedArray[j][1] + "</td><td>" + earlydate + "</td><td>" + sortedArray[j][3] + "</td><td>" + sortedArray[j][5] + "</td><td>" + sortedArray[j][6] + "</td><td> " + sortedArray[j][4] + "</td></tr>";
+		}
+		tablecalc += "</table>";
+		document.getElementById('tab1').innerHTML = tablecalc;
+			
+
+			// put array data back into chart
+			// remove the Bultmann and Nolloth references or rather, move them to the beginning
+		newAuthors.push('Rudolph Bultmann');
+		newAuthors.push('C. F. Nolloth');
+		var newEarly = [];
+		var newLate = [];
+		newEarly.push(100);
+		newEarly.push(95);
+		newLate.push(0);
+		newLate.push(0);
+		newbackgroundcolorarray.push('rgba(255, 0, 0, 1.0)');
+		newbackgroundcolorarray.push('rgba(127, 255, 212, 1.0)');
+		realignedArray[0] = ['Rudolph Bultmann', 'The Gospel of John: A Commentary (Philadelphia: Westminster John Knox Press, 1971), 12', 100, 100, 'Liberal German', 1891, '2 - Medium/Low'];
+		realignedArray[1] = ['C. F. Nolloth', 'The Rise of the Christian Religion: A Study in Origins (London: Macmillan and Co, Ltd, 1917): 27', 95, 95, 'Anglican', 1917, '2 - Medium/Low'];
+		newauthorreference.push('Rudolph Bultmann\nThe Gospel of John: A Commentary (Philadelphia: Westminster John Knox Press, 1971), 12');
+		newauthorreference.push('C. F. Nolloth\nThe Rise of the Christian Religion: A Study in Origins (London: Macmillan and Co, Ltd, 1917): 27');
+
+		for (var j=0; j < numSources; j++) {
+			var numSkipped = 0;
+			if (sortedArray[j][0] === 'Rudolph Bultmann') {
+				numSkipped += 1;
+			}
+			else if (sortedArray[j][0] === 'Rudolph Bultmann') {
+				numSkipped += 1;
+			}
+			else {
+					realignedArray.push(sortedArray[j+numSkipped]);
+					newAuthors.push(sortedArray[j+numSkipped][0]);
+					newEarly.push(sortedArray[j+numSkipped][2]);
+					newLate.push(Number(sortedArray[j+numSkipped][3]) - sortedArray[j+numSkipped][2]);
+					newauthorreference.push(sortedArray[j+numSkipped][0] + ".\n" + sortedArray[j+numSkipped][1]);
+				if (Number(sortedArray[j+numSkipped][2]) < 20) {
+					if (sortedArray[j+numSkipped][4] === 'Fundamentalist Protestant') {
+						newbackgroundcolorarray.push(pregradient);
+						}
+					else if (sortedArray[j+numSkipped][4] === 'Evangelical Protestant') {
+						newbackgroundcolorarray.push(pregradientev);
+						}
+				}
+				else {
+					for (var k=0; k < LegendTradition.length; k++) {
+						if (sortedArray[j+numSkipped][4] === LegendTradition[k]) {
+							newbackgroundcolorarray.push(RgbaColorMapping[k]);
+						}
+					}
+				}
+			}
+			// document.getElementById('debughere').innerHTML = newbackgroundcolorarray;
+		}
+
+	myBar.data.labels = newAuthors;
+	myBar.data.datasets[0].data = newEarly.map(function(value) { return value-origin; });
+	myBar.data.datasets[1].data = newLate.map(function(value) { return value-origin; });
+	myBar.data.datasets[1].backgroundColor = newbackgroundcolorarray;
+	var dataoptions = {
+  		callbacks: {
+			title: function(tooltipItem, data) {
+				var titlestring = newauthorreference[tooltipItem[0].index];
+				var splittext;
+				var arguments;
+				if (/\n/.test(titlestring)) {
+					splittext = titlestring.split(/\n/);
+					arguments = 1;
+				}
+				else {
+					splittext=titlestring;
+					arguments = 0;
+				}
+				if (arguments === 0) {
+					var title1 = [splittext];
+					return title1;
+					}
+				else {
+					var title1 = [];
+					for (var i = 0; i < splittext.length; i++) {
+						title1.push(splittext[i]);
+						}
+				}
+				return title1; }
+			,
+  			label: function(tooltipItem, data) {
+				var label1 = data.datasets[tooltipItem.datasetIndex].label;
+				var datingyear = tooltipItem.xLabel;
+				var tooltip;
+				if ((newLate[tooltipItem.index] === 0) && (tooltipItem.datasetIndex < 2))
+				{
+					// really garbage in here to suppress
+					if (label1 === "early date (A.D./C.E.)" ) {
+						label1 = 'date of composition (A.D./C.E.)';
+						// was :tooltip = [label1 + ": " + datingyear];
+						datingyear = tooltipItem.datasetIndex;
+					}
+				}
+				else if (datingyear < 0)
+				{
+				// do nothing
+				}
+				else if (datingyear > 200)
+				{
+				// do nothing
+				}
+				else
+				{
+					if (label1 === "early date (A.D./C.E.)" ) {
+						datingyear = tooltipItem.xLabel;
+					}
+					else 
+					{
+						// not early date, so late date.
+						datingyear = Number(newEarly[tooltipItem.index]) + Number(newLate[tooltipItem.index]);
+					}
+				tooltip = [label1 + ": " + datingyear];
+				}
+  				return tooltip; }
+  		}
+  	};
+	myBar.options.tooltips = dataoptions;
+	myBar.update();
+}
+
+function returnLastName(referencestring) {
+	var addendedcomma = referencestring + ",";
+	if (addendedcomma.search(",") < referencestring.length) {
+		// there exists a comma
+	}
+	else
+	{
+		// no comma
+	
+	}
+}
+
+function copytoclipboard() {
+	var el = document.createElement('textarea');
+	var sortedArray = new Array(numSources);
+	var copystring = "";
+	sortedArray = allsources.sort(function(a,b) { 
+		var comparestring1 = a[0].toUpperCase();
+		var comparestring2 = b[0].toUpperCase();
+	return comparestring1.localeCompare(comparestring2);
+	});
+	// document.getElementById('tab1').innerHTML=sortedArray;
+	for (var j=0; j < numSources; j++) {
+		copystring += sortedArray[j][0] + ". " + sortedArray[j][1] + "\n";
+	}
+	el.value = copystring;
+	el.setAttribute('readonly', '');
+	el.style = {position: 'absolute', left: '-9999px'};
+   document.body.appendChild(el);
+   // Select text inside element
+   el.select();
+   // Copy text to clipboard
+   document.execCommand('copy');
+   // Remove temporary element
+   document.body.removeChild(el);
+}
+</script>
+</section>
+
+</body>
+
+</html>
